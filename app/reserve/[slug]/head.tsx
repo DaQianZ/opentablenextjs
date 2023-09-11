@@ -1,3 +1,5 @@
+import { idText } from "typescript"
+
 export default function Head() {
   return (
     <>
