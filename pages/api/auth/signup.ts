@@ -1,5 +1,10 @@
 import { NextApiRequest, NextApiResponse } from "next";
 import validator from "validator";
+import { PrismaClient } from "@prisma/client";
+import bcript from "bcrypt";
+import * as jose from "jose";
+
+const prisma = new PrismaClient();
 
 export default async function handler(
   req: NextApiRequest,
@@ -46,9 +51,45 @@ export default async function handler(
       return res.status(400).json({ errorMessage: errors[0] });
     }
 
-    res.status(200).json({
-      hello: req.body,
-      errors: errors,
+    const userWithEmail = await prisma.user.findUnique({
+      where: {
+        email,
+      },
+    });
+
+    if (userWithEmail) {
+      return res
+        .status(400)
+        .json({ errorMessage: "Email is associated with another account" });
+    }
+
+    const hashedPassword = await bcript.hash(password, 10);
+
+    const user = await prisma.user.create({
+      data: {
+        first_name: firstName,
+        last_name: lastName,
+        password: hashedPassword,
+        city,
+        phone,
+        email,
+      },
+    });
+
+    const alg = "HS256";
+    const secret = new TextEncoder().encode(process.env.JWT_SECRET);
+
+    const token = await new jose.SignJWT({
+      email: user.email,
+    })
+      .setProtectedHeader({ alg })
+      .setExpirationTime("24h")
+      .sign(secret);
+
+    return res.status(200).json({
+      token,
     });
   }
+
+  return res.status(404).json("Unknown endpoint");
 }
