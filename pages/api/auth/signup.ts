@@ -3,6 +3,7 @@ import validator from "validator";
 import { PrismaClient } from "@prisma/client";
 import bcript from "bcrypt";
 import * as jose from "jose";
+import { setCookie } from "cookies-next";
 
 const prisma = new PrismaClient();
 
@@ -86,8 +87,14 @@ export default async function handler(
       .setExpirationTime("24h")
       .sign(secret);
 
+    setCookie("jwt", token, { req, res, maxAge: 60 * 6 * 24 });
+
     return res.status(200).json({
-      token,
+      firtName: user.first_name,
+      lastName: user.last_name,
+      city: user.city,
+      email: user.email,
+      phone: user.phone,
     });
   }
 
